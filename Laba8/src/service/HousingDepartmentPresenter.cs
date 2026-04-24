@@ -5,104 +5,159 @@ namespace Laba1.service;
 
 /// <summary>
 /// Презентер для управления объектом <see cref="HousingDepartment"/>.
-/// В MVP презентер координирует модель и представления.
+/// В MVP презентер координирует модель и пассивное представление.
 /// </summary>
 public class HousingDepartmentPresenter : IHousingDepartmentPresenter
 {
-    /// <summary>
-    /// Экземпляр жилищного департамента (Singleton).
-    /// </summary>
     private readonly HousingDepartment _department;
+    private readonly IHousingDepartmentFormView _view;
+    private readonly List<IHousingDepartmentView> _secondaryViews;
 
-    /// <summary>
-    /// Зарегистрированные представления.
-    /// </summary>
-    private readonly List<IHousingDepartmentView> _views = new();
+    private bool _isInfoVisible;
+    private string _latestDepartmentInfo = string.Empty;
 
-    public HousingDepartmentPresenter()
+    public HousingDepartmentPresenter(
+        IHousingDepartmentFormView view,
+        params IHousingDepartmentView[] secondaryViews)
     {
         _department = HousingDepartment.Instance;
+        _view = view;
+        _secondaryViews = secondaryViews.ToList();
+
+        _view.SaveRequested += OnSaveRequested;
+        _view.ShowInfoToggleRequested += OnShowInfoToggleRequested;
+        _view.NextRequested += OnNextRequested;
+        _view.PreviousRequested += OnPreviousRequested;
+        _view.ExitRequested += OnExitRequested;
+        _view.FieldSelectionChanged += OnFieldSelectionChanged;
     }
 
     /// <inheritdoc />
-    public void AttachView(IHousingDepartmentView view)
+    public void Initialize()
     {
-        if (!_views.Contains(view))
+        _view.ShowStartScreen();
+        _view.SetShowButtonText("Показать информацию");
+        _view.ClearDepartmentInfo();
+        _view.UpdateInputVisibility(_view.SelectedFieldIndex);
+
+        _latestDepartmentInfo = GetDepartmentInfo();
+        PublishToSecondaryViews(_latestDepartmentInfo);
+    }
+
+    private void OnSaveRequested(object? sender, EventArgs e)
+    {
+        try
         {
-            _views.Add(view);
+            ApplyChangesFromView();
+            _view.ShowSavedStatus();
+
+            _latestDepartmentInfo = GetDepartmentInfo();
+            PublishToSecondaryViews(_latestDepartmentInfo);
+
+            _isInfoVisible = true;
+            _view.SetShowButtonText("Скрыть информацию");
+            _view.ShowDepartmentInfo(_latestDepartmentInfo);
+        }
+        catch (Exception ex)
+        {
+            _view.ShowError(ex.Message);
         }
     }
 
-    /// <inheritdoc />
-    public void RefreshViews()
+    private void OnShowInfoToggleRequested(object? sender, EventArgs e)
     {
-        string info = GetDepartmentInfo();
-
-        foreach (IHousingDepartmentView view in _views)
+        if (!_isInfoVisible)
         {
-            view.ShowDepartmentInfo(info);
+            if (string.IsNullOrWhiteSpace(_latestDepartmentInfo))
+            {
+                _latestDepartmentInfo = GetDepartmentInfo();
+            }
+
+            _isInfoVisible = true;
+            _view.SetShowButtonText("Скрыть информацию");
+            _view.ShowDepartmentInfo(_latestDepartmentInfo);
+            return;
+        }
+
+        _isInfoVisible = false;
+        _view.SetShowButtonText("Показать информацию");
+        _view.ClearDepartmentInfo();
+    }
+
+    private void OnNextRequested(object? sender, EventArgs e)
+    {
+        _view.ShowMainScreen();
+    }
+
+    private void OnPreviousRequested(object? sender, EventArgs e)
+    {
+        _view.ShowStartScreen();
+    }
+
+    private void OnExitRequested(object? sender, EventArgs e)
+    {
+        _view.CloseView();
+    }
+
+    private void OnFieldSelectionChanged(object? sender, EventArgs e)
+    {
+        _view.UpdateInputVisibility(_view.SelectedFieldIndex);
+    }
+
+    private void ApplyChangesFromView()
+    {
+        switch (_view.SelectedFieldIndex)
+        {
+            case 0:
+                if (!string.IsNullOrWhiteSpace(_view.DistrictInput))
+                {
+                    _department.District = _view.DistrictInput;
+                }
+
+                break;
+
+            case 1:
+                _department.HousingDepartmentNumber = _view.HousingDepartmentNumberInput;
+                break;
+
+            case 2:
+                if (!string.IsNullOrWhiteSpace(_view.ResidentNamesInput) &&
+                    !string.IsNullOrWhiteSpace(_view.ResidentHouseNumbersInput))
+                {
+                    _department.Residents = ParseResidents(_view.ResidentNamesInput, _view.ResidentHouseNumbersInput);
+                }
+
+                break;
+
+            case 3:
+                _department.PaidResidentsCount = _view.PaidResidentsCountInput;
+                break;
+
+            case 4:
+                _department.Tariff = _view.TariffInput;
+                break;
+
+            case 5:
+                _department.Balance = _view.BalanceInput;
+                break;
+
+            case 6:
+                _department.EmployeeCount = _view.EmployeeCountInput;
+                break;
         }
     }
 
-    /// <inheritdoc />
-    public void UpdateDistrict(string district)
-    {
-        if (!string.IsNullOrWhiteSpace(district))
-        {
-            _department.District = district;
-            RefreshViews();
-        }
-    }
-
-    /// <inheritdoc />
-    public void UpdateHousingDepartmentNumber(int housingDepartmentNumber)
-    {
-        _department.HousingDepartmentNumber = housingDepartmentNumber;
-        RefreshViews();
-    }
-
-    /// <inheritdoc />
-    public void UpdateResidents(string names, string houseNumbers)
-    {
-        if (!string.IsNullOrWhiteSpace(names) && !string.IsNullOrWhiteSpace(houseNumbers))
-        {
-            _department.Residents = ParseResidents(names, houseNumbers);
-            RefreshViews();
-        }
-    }
-
-    /// <inheritdoc />
-    public void UpdatePaidResidentsCount(int paidResidentsCount)
-    {
-        _department.PaidResidentsCount = paidResidentsCount;
-        RefreshViews();
-    }
-
-    /// <inheritdoc />
-    public void UpdateTariff(double tariff)
-    {
-        _department.Tariff = tariff;
-        RefreshViews();
-    }
-
-    /// <inheritdoc />
-    public void UpdateBalance(decimal balance)
-    {
-        _department.Balance = balance;
-        RefreshViews();
-    }
-
-    /// <inheritdoc />
-    public void UpdateEmployeeCount(int employeeCount)
-    {
-        _department.EmployeeCount = employeeCount;
-        RefreshViews();
-    }
-
-    /// <inheritdoc />
-    public string GetDepartmentInfo()
+    private string GetDepartmentInfo()
     {
         return _department.ToString();
+    }
+
+    private void PublishToSecondaryViews(string info)
+    {
+        foreach (IHousingDepartmentView secondaryView in _secondaryViews)
+        {
+            secondaryView.ShowDepartmentInfo(info);
+        }
     }
 
     /// <summary>

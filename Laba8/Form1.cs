@@ -5,93 +5,72 @@ using Laba1.Src.util;
 namespace Laba1;
 
 /// <summary>
-/// Главная форма приложения (View) для MVP.
+/// Главная форма приложения (пассивный View) для MVP.
 /// </summary>
-public partial class Form1 : Form, IHousingDepartmentView
+public partial class Form1 : Form, IHousingDepartmentFormView
 {
     private const int START_WINDOW_HEIGHT = 451;
     private const int START_WINDOW_WIDTH = 526;
     private const int MAIN_WINDOW_HEIGHT = 723;
     private const int MAIN_WINDOW_WIDTH = 628;
 
-    private bool _isShowedInfo;
-    private string _latestDepartmentInfo = string.Empty;
-
     private readonly IHousingDepartmentPresenter _presenter;
+
+    public event EventHandler? SaveRequested;
+    public event EventHandler? ShowInfoToggleRequested;
+    public event EventHandler? NextRequested;
+    public event EventHandler? PreviousRequested;
+    public event EventHandler? ExitRequested;
+    public event EventHandler? FieldSelectionChanged;
+
+    public int SelectedFieldIndex => comboBox_fields.SelectedIndex;
+    public string DistrictInput => textBox_district.Text;
+    public int HousingDepartmentNumberInput => (int)numericUpDown_housingDepartmentNumber.Value;
+    public string ResidentNamesInput => textBox_residentName.Text;
+    public string ResidentHouseNumbersInput => textBox_residentHouseNum.Text;
+    public int PaidResidentsCountInput => (int)numericUpDown_paidResidentsCount.Value;
+    public double TariffInput => (double)numericUpDown_tariff.Value;
+    public decimal BalanceInput => numericUpDown_balance.Value;
+    public int EmployeeCountInput => (int)numericUpDown_employeeCount.Value;
 
     public Form1()
     {
         InitializeComponent();
 
-        Size = new Size(START_WINDOW_WIDTH, START_WINDOW_HEIGHT);
-        MaximumSize = new Size(START_WINDOW_WIDTH, START_WINDOW_HEIGHT);
-        MinimumSize = new Size(START_WINDOW_WIDTH, START_WINDOW_HEIGHT);
-
-        panel2.Visible = false;
-        tableLayoutPanel2.Visible = false;
-
-        _presenter = new HousingDepartmentPresenter();
-        _presenter.AttachView(this);
-        _presenter.AttachView(new ConsoleHousingDepartmentView());
-
-        _presenter.RefreshViews();
+        _presenter = new HousingDepartmentPresenter(this, new ConsoleHousingDepartmentView());
+        _presenter.Initialize();
     }
 
     /// <inheritdoc />
     public void ShowDepartmentInfo(string info)
     {
-        _latestDepartmentInfo = info;
-
-        if (_isShowedInfo)
-        {
-            label_show_info.Text = info;
-        }
+        label_show_info.Text = info;
     }
 
-    private void FillValues()
+    /// <inheritdoc />
+    public void ShowMainScreen()
     {
-        switch (comboBox_fields.SelectedIndex)
-        {
-            case 0:
-                _presenter.UpdateDistrict(textBox_district.Text);
-                break;
+        panel2.Visible = true;
+        tableLayoutPanel2.Visible = true;
 
-            case 1:
-                _presenter.UpdateHousingDepartmentNumber((int)numericUpDown_housingDepartmentNumber.Value);
-                break;
-
-            case 2:
-                _presenter.UpdateResidents(textBox_residentName.Text, textBox_residentHouseNum.Text);
-                break;
-
-            case 3:
-                _presenter.UpdatePaidResidentsCount((int)numericUpDown_paidResidentsCount.Value);
-                break;
-
-            case 4:
-                _presenter.UpdateTariff((double)numericUpDown_tariff.Value);
-                break;
-
-            case 5:
-                _presenter.UpdateBalance(numericUpDown_balance.Value);
-                break;
-
-            case 6:
-                _presenter.UpdateEmployeeCount((int)numericUpDown_employeeCount.Value);
-                break;
-        }
-
-        label_saved_status.Visible = true;
-
-        if (!_isShowedInfo)
-        {
-            _isShowedInfo = true;
-            button_show.Text = "Скрыть информацию";
-            label_show_info.Text = _latestDepartmentInfo;
-        }
+        Size = new Size(MAIN_WINDOW_WIDTH, MAIN_WINDOW_HEIGHT);
+        MaximumSize = new Size(MAIN_WINDOW_WIDTH, MAIN_WINDOW_HEIGHT);
+        MinimumSize = new Size(MAIN_WINDOW_WIDTH, MAIN_WINDOW_HEIGHT);
     }
 
-    private void comboBox_fields_SelectedIndexChanged(object sender, EventArgs e)
+    /// <inheritdoc />
+    public void ShowStartScreen()
+    {
+        panel2.Visible = false;
+        tableLayoutPanel2.Visible = false;
+
+        Size = new Size(START_WINDOW_WIDTH, START_WINDOW_HEIGHT);
+        MaximumSize = new Size(START_WINDOW_WIDTH, START_WINDOW_HEIGHT);
+        MinimumSize = new Size(START_WINDOW_WIDTH, START_WINDOW_HEIGHT);
+    }
+
+    /// <inheritdoc />
+    public void UpdateInputVisibility(int selectedIndex)
     {
         textBox_district.Visible = false;
         numericUpDown_housingDepartmentNumber.Visible = false;
@@ -102,9 +81,9 @@ public partial class Form1 : Form, IHousingDepartmentView
         numericUpDown_balance.Visible = false;
         numericUpDown_employeeCount.Visible = false;
 
-        button_save.Visible = true;
+        button_save.Visible = selectedIndex >= 0;
 
-        switch (comboBox_fields.SelectedIndex)
+        switch (selectedIndex)
         {
             case 0:
                 textBox_district.Visible = true;
@@ -137,62 +116,68 @@ public partial class Form1 : Form, IHousingDepartmentView
         }
     }
 
+    /// <inheritdoc />
+    public void ShowSavedStatus()
+    {
+        label_saved_status.Visible = true;
+    }
+
+    /// <inheritdoc />
+    public void SetShowButtonText(string text)
+    {
+        button_show.Text = text;
+    }
+
+    /// <inheritdoc />
+    public void ClearDepartmentInfo()
+    {
+        label_show_info.Text = string.Empty;
+    }
+
+    /// <inheritdoc />
+    public void ShowError(string message)
+    {
+        NativeMessageBox.MessageBox(
+            IntPtr.Zero,
+            message,
+            "Ошибка",
+            NativeMessageBox.MB_OK | NativeMessageBox.MB_ICONERROR
+        );
+    }
+
+    /// <inheritdoc />
+    public void CloseView()
+    {
+        Close();
+    }
+
+    private void comboBox_fields_SelectedIndexChanged(object sender, EventArgs e)
+    {
+        FieldSelectionChanged?.Invoke(this, EventArgs.Empty);
+    }
+
     private void button_next_Click(object sender, EventArgs e)
     {
-        panel2.Visible = true;
-        tableLayoutPanel2.Visible = true;
-
-        Size = new Size(MAIN_WINDOW_WIDTH, MAIN_WINDOW_HEIGHT);
-        MaximumSize = new Size(MAIN_WINDOW_WIDTH, MAIN_WINDOW_HEIGHT);
-        MinimumSize = new Size(MAIN_WINDOW_WIDTH, MAIN_WINDOW_HEIGHT);
+        NextRequested?.Invoke(this, EventArgs.Empty);
     }
 
     private void button_show_Click(object sender, EventArgs e)
     {
-        if (!_isShowedInfo)
-        {
-            _presenter.RefreshViews();
-            label_show_info.Text = _latestDepartmentInfo;
-            button_show.Text = "Скрыть информацию";
-        }
-        else
-        {
-            label_show_info.Text = string.Empty;
-            button_show.Text = "Показать информацию";
-        }
-
-        _isShowedInfo = !_isShowedInfo;
+        ShowInfoToggleRequested?.Invoke(this, EventArgs.Empty);
     }
 
     private void button_save_Click(object sender, EventArgs e)
     {
-        try
-        {
-            FillValues();
-        }
-        catch (Exception ex)
-        {
-            NativeMessageBox.MessageBox(
-                IntPtr.Zero,
-                ex.Message,
-                "Ошибка",
-                NativeMessageBox.MB_OK | NativeMessageBox.MB_ICONERROR
-            );
-        }
+        SaveRequested?.Invoke(this, EventArgs.Empty);
     }
 
     private void button_prev_Click(object sender, EventArgs e)
     {
-        panel2.Visible = false;
-        tableLayoutPanel2.Visible = false;
-
-        Size = new Size(START_WINDOW_WIDTH, START_WINDOW_HEIGHT);
-        MaximumSize = new Size(START_WINDOW_WIDTH, START_WINDOW_HEIGHT);
-        MinimumSize = new Size(START_WINDOW_WIDTH, START_WINDOW_HEIGHT);
+        PreviousRequested?.Invoke(this, EventArgs.Empty);
     }
 
     private void button_exit_Click(object sender, EventArgs e)
     {
-        Close();
+        ExitRequested?.Invoke(this, EventArgs.Empty);
     }
 }
