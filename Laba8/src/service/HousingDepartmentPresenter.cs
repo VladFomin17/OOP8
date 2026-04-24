@@ -1,10 +1,11 @@
-﻿using Laba1.Src.Subject;
+﻿using Laba1.src.view;
+using Laba1.Src.Subject;
 
 namespace Laba1.service;
 
 /// <summary>
-/// Контроллер для управления объектом <see cref="HousingDepartment"/>.
-/// Инкапсулирует логику изменения состояния и обеспечивает централизованный доступ.
+/// Презентер для управления объектом <see cref="HousingDepartment"/>.
+/// В MVP презентер координирует модель и представления.
 /// </summary>
 public class HousingDepartmentPresenter : IHousingDepartmentPresenter
 {
@@ -14,83 +15,91 @@ public class HousingDepartmentPresenter : IHousingDepartmentPresenter
     private readonly HousingDepartment _department;
 
     /// <summary>
-    /// Инициализирует новый экземпляр контроллера.
+    /// Зарегистрированные представления.
     /// </summary>
+    private readonly List<IHousingDepartmentView> _views = new();
+
     public HousingDepartmentPresenter()
     {
         _department = HousingDepartment.Instance;
     }
 
-    /// <summary>
-    /// Обновляет район обслуживания.
-    /// </summary>
-    /// <param name="district">Название района.</param>
+    /// <inheritdoc />
+    public void AttachView(IHousingDepartmentView view)
+    {
+        if (!_views.Contains(view))
+        {
+            _views.Add(view);
+        }
+    }
+
+    /// <inheritdoc />
+    public void RefreshViews()
+    {
+        string info = GetDepartmentInfo();
+
+        foreach (IHousingDepartmentView view in _views)
+        {
+            view.ShowDepartmentInfo(info);
+        }
+    }
+
+    /// <inheritdoc />
     public void UpdateDistrict(string district)
     {
         if (!string.IsNullOrWhiteSpace(district))
+        {
             _department.District = district;
+            RefreshViews();
+        }
     }
-    
-    /// <summary>
-    /// Обновляет номер жилищного департамента.
-    /// </summary>
-    /// <param name="housingDepartmentNumber">Номер департамента.</param>
+
+    /// <inheritdoc />
     public void UpdateHousingDepartmentNumber(int housingDepartmentNumber)
     {
         _department.HousingDepartmentNumber = housingDepartmentNumber;
+        RefreshViews();
     }
 
-    /// <summary>
-    /// Обновляет список жильцов.
-    /// </summary>
-    /// <param name="names">Строка с именами жильцов, разделенными ';'.</param>
-    /// <param name="houseNumbers">Строка с номерами домов, разделенными ';'.</param>
+    /// <inheritdoc />
     public void UpdateResidents(string names, string houseNumbers)
     {
         if (!string.IsNullOrWhiteSpace(names) && !string.IsNullOrWhiteSpace(houseNumbers))
+        {
             _department.Residents = ParseResidents(names, houseNumbers);
+            RefreshViews();
+        }
     }
 
-    /// <summary>
-    /// Обновляет количество оплативших жильцов.
-    /// </summary>
-    /// <param name="paidResidentsCount">Количество оплативших.</param>
+    /// <inheritdoc />
     public void UpdatePaidResidentsCount(int paidResidentsCount)
     {
         _department.PaidResidentsCount = paidResidentsCount;
+        RefreshViews();
     }
 
-    /// <summary>
-    /// Обновляет тариф.
-    /// </summary>
-    /// <param name="tariff">Значение тарифа.</param>
+    /// <inheritdoc />
     public void UpdateTariff(double tariff)
     {
         _department.Tariff = tariff;
+        RefreshViews();
     }
 
-    /// <summary>
-    /// Обновляет баланс департамента.
-    /// </summary>
-    /// <param name="balance">Баланс.</param>
+    /// <inheritdoc />
     public void UpdateBalance(decimal balance)
     {
         _department.Balance = balance;
+        RefreshViews();
     }
 
-    /// <summary>
-    /// Обновляет количество сотрудников.
-    /// </summary>
-    /// <param name="employeeCount">Количество сотрудников.</param>
+    /// <inheritdoc />
     public void UpdateEmployeeCount(int employeeCount)
     {
         _department.EmployeeCount = employeeCount;
+        RefreshViews();
     }
 
-    /// <summary>
-    /// Возвращает информацию о департаменте.
-    /// </summary>
-    /// <returns>Строковое представление объекта <see cref="HousingDepartment"/>.</returns>
+    /// <inheritdoc />
     public string GetDepartmentInfo()
     {
         return _department.ToString();
@@ -99,22 +108,15 @@ public class HousingDepartmentPresenter : IHousingDepartmentPresenter
     /// <summary>
     /// Преобразует строки с данными жильцов в массив объектов <see cref="Resident"/>.
     /// </summary>
-    /// <param name="residentNames">Имена жильцов, разделенные ';'.</param>
-    /// <param name="residentNumberHouse">Номера домов, разделенные ';'.</param>
-    /// <returns>Массив жильцов.</returns>
-    /// <exception cref="IndexOutOfRangeException">
-    /// Выбрасывается, если количество имен не совпадает с количеством номеров домов.
-    /// </exception>
-    /// <exception cref="FormatException">
-    /// Выбрасывается, если номер дома не удалось преобразовать в число.
-    /// </exception>
     private Resident[] ParseResidents(string residentNames, string residentNumberHouse)
     {
         string[] splitNames = residentNames.Split(';');
         string[] splitNumber = residentNumberHouse.Split(';');
 
         if (splitNames.Length != splitNumber.Length)
+        {
             throw new IndexOutOfRangeException("Количество имен не совпадает с количеством номеров домов");
+        }
 
         Resident[] residents = new Resident[splitNames.Length];
 

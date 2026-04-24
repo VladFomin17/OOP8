@@ -1,10 +1,18 @@
-﻿namespace Laba1.service;
+﻿using Laba1.src.view;
+
+namespace Laba1.service;
 
 /// <summary>
 /// Интерфейс презентера для управления жилищным департаментом.
 /// </summary>
 public interface IHousingDepartmentPresenter
 {
+    /// <summary>Подключает представление к презентеру.</summary>
+    void AttachView(IHousingDepartmentView view);
+
+    /// <summary>Обновляет все подключенные представления.</summary>
+    void RefreshViews();
+
     /// <summary>Обновляет район.</summary>
     void UpdateDistrict(string district);
 
