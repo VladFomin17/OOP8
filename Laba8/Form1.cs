@@ -1,5 +1,6 @@
 ﻿using Laba1.service;
 using Laba1.src.view;
+using Laba1.Src.Subject;
 using Laba1.Src.util;
 
 namespace Laba1;
@@ -37,13 +38,23 @@ public partial class Form1 : Form, IHousingDepartmentFormView
     {
         InitializeComponent();
 
-        _presenter = new HousingDepartmentPresenter(this, new ConsoleHousingDepartmentView());
+        _presenter = new HousingDepartmentPresenter(this, HousingDepartment.CreateDetached());
+        var consolePresenter = new HousingDepartmentPresenter(HousingDepartment.CreateDetached());
+        consolePresenter.AttachView(new ConsoleHousingDepartmentView(consolePresenter));
+
         _presenter.Initialize();
+        consolePresenter.Initialize();
     }
 
     /// <inheritdoc />
     public void ShowDepartmentInfo(string info)
     {
+        if (InvokeRequired)
+        {
+            BeginInvoke(() => ShowDepartmentInfo(info));
+            return;
+        }
+
         label_show_info.Text = info;
     }
 
@@ -181,3 +192,5 @@ public partial class Form1 : Form, IHousingDepartmentFormView
         ExitRequested?.Invoke(this, EventArgs.Empty);
     }
 }
+
+

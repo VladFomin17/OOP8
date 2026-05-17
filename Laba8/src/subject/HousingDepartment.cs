@@ -11,12 +11,20 @@ public class HousingDepartment
     /// <summary>
     /// Единственный экземпляр класса (Singleton).
     /// </summary>
-    private static HousingDepartment _instance;
+    private static HousingDepartment? _instance;
 
     /// <summary>
     /// Получает экземпляр <see cref="HousingDepartment"/>.
     /// </summary>
     public static HousingDepartment Instance => _instance ??= new HousingDepartment();
+
+    /// <summary>
+    /// Создаёт отдельный экземпляр модели, не связанный с Singleton-экземпляром.
+    /// </summary>
+    public static HousingDepartment CreateDetached()
+    {
+        return new HousingDepartment();
+    }
 
     /// <summary>
     /// Количество созданных объектов класса.
@@ -36,7 +44,7 @@ public class HousingDepartment
     /// <summary>
     /// Массив жильцов.
     /// </summary>
-    private Resident[] _residents;
+    private Resident[] _residents = Array.Empty<Resident>();
 
     /// <summary>
     /// Получает или задаёт список жильцов.
@@ -102,7 +110,7 @@ public class HousingDepartment
     {
         District = "Не указан";
         HousingDepartmentNumber = 0;
-        Residents = new Resident[0];
+        Residents = Array.Empty<Resident>();
         PaidResidentsCount = 0;
         Tariff = 0;
         Balance = 0;
@@ -172,3 +180,5 @@ public class HousingDepartment
         return _residents[index].ToString();
     }
 }
+
+
